@@ -77,19 +77,19 @@ def parse_file(loaded_file):
             message = ""
             while not prog.search(message_line) and message_line != "\n":
                 message += " " + message_line
-                line_cwe = get_cwe(message_line)
-                if line_cwe:
-                    cwe = line_cwe
+                cwes = get_cwes(message_line)
+                if cwes:
+                    cwe = cwes
                 message_line = loaded_file.readline()
             weakness_messages.append(message)
             # TODO: Flawfinder can returns more than one CWE,
             # when this rappends, get_cwe cannot return a valid value
             # Fix this.
 
-            if cwe != "":
+            if cwe != []:
                 weakness_cwes.append(cwe)
             else:
-                weakness_cwes.append(0)
+                weakness_cwes.append("")
         line = loaded_file.readline()
 
     counter = 0
@@ -98,7 +98,7 @@ def parse_file(loaded_file):
                             function=None,
                             point=Point(int(weakness_lines[counter]), 0))
 
-        issue = Issue(int(weakness_cwes[counter]), None, location,
+        issue = Issue(weakness_cwes[counter], None, location,
                       Message(text=weakness_messages[counter]),notes=None,
                       trace=None, severity=None, customfields=None)
 
@@ -107,15 +107,28 @@ def parse_file(loaded_file):
 
     return analysis
 
-def get_cwe(line):
+def get_cwes(line):
     """TODO: Docstring for _get_cwe.
     :returns: TODO
 
     """
-    pattern = "\([A-Z]*\-([1-9]*)\)"
-    prog = re.compile(pattern)
-    if prog.search(line):
-        return prog.search(line).group(1)
+    
+    cwe_list = []
+    if line.find("CWE") > 0:
+        first_parenthesis = line.rfind('(')
+        last_parenthesis = line.rfind(')')
+        cwes_from_line = line[(first_parenthesis + 1):last_parenthesis]
+        if cwes_from_line.find(':') > 0:
+            for cwe in cwes_from_line.split(':'):
+                cwe_list.append(int(cwe.split('-')[1]))
+            return cwe_list
+        if cwes_from_line.find(',') > 0:
+            for cwe in cwes_from_line.split(','):
+                cwe_list.append(int(cwe.split('-')[1]))
+            return cwe_list
+
+        return([int(cwes_from_line.split('-')[1])])
+
 
 if __name__ == '__main__':
     main()
